@@ -75,7 +75,7 @@ tcc_dengue_brasil/
 ### 3.2. Instalação
 
 ```bash
-git clone https://github.com/<seu-usuario>/tcc_dengue_brasil.git
+git clone https://github.com/MDaemon94/tcc_dengue_projeto.git
 cd tcc_dengue_brasil
 
 # Ambiente virtual recomendado
