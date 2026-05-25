@@ -294,49 +294,124 @@ Igual ao IDHM: matching nome+UF normalizado contra a tabela `municipios_ibge.csv
 
 ---
 
-## 4. Vacinação contra dengue — variável binária (Qdenga 2024)
-
+## 4. Vacinação contra dengue — variável binária (Qdenga 2024+)
+ 
 ### Estratégia adotada
-
-Em vez de baixar os microdados de doses aplicadas (~50 GB do PNI completo, que precisariam ser filtrados por imunobiológico), este TCC adota uma abordagem mais simples e cientificamente defensável: **modela a vacinação como variável categórica binária por município × ano**, indicando se o município fez parte da campanha oficial de vacinação contra dengue naquele ano.
-
-A justificativa metodológica: a campanha do Ministério da Saúde teve cobertura altamente concentrada (apenas 521 municípios em 2024, com expansão posterior), e o efeito populacional da vacina ocorre principalmente em **nível municipal de inclusão na campanha**, não em variações finas de cobertura. Estudos de efetividade vacinal em larga escala costumam usar esse mesmo desenho (intent-to-treat ecológico).
-
-### Fonte oficial dos municípios prioritários
-
-- **Informe Técnico Operacional — Vacinação contra a Dengue 2024 (Ministério da Saúde):**
+ 
+Em vez de baixar microdados nominais do PNI (volumosos e que exigiriam
+anonimização), este TCC modela a vacinação como **variável categórica
+binária por município × ano**, indicando se o município registrou
+aplicação de pelo menos uma dose da vacina Qdenga (atenuada) naquele ano.
+ 
+**Justificativa metodológica:** o efeito populacional da vacina, em uma
+análise ecológica, ocorre principalmente em nível de **inclusão municipal
+na campanha**, não em variações finas de cobertura individual. Esse
+desenho corresponde a um *intent-to-treat ecológico*, comum em estudos
+de efetividade vacinal em larga escala. Optou-se por usar **doses
+efetivamente aplicadas** (fato registrado na RNDS) em vez da lista de
+521 municípios oficialmente prioritários, porque (i) houve ampliações
+ao longo de 2024 (Mar/Abr: +154 e +625 municípios) e (ii) registros
+factuais protegem contra discrepâncias entre planejamento e execução
+da campanha.
+ 
+### Fonte primária
+ 
+**Painel LocalizaSUS — Vacinação por Ocorrência (Calendário Nacional)**
+ 
+URL: <https://infoms.saude.gov.br/extensions/SEIDIGI_DEMAS_VACINACAO_CALENDARIO_NACIONAL_OCORRENCIA/SEIDIGI_DEMAS_VACINACAO_CALENDARIO_NACIONAL_OCORRENCIA.html>
+ 
+Fonte: Rede Nacional de Dados em Saúde (RNDS), alimentada pelo SI-PNI,
+e-SUS APS e sistemas próprios integrados, conforme Informe Técnico-
+Operacional 2024 do MS (seção 7).
+ 
+### Fontes secundárias / contexto
+ 
+- **Informe Técnico-Operacional 2024 (MS/SVSA/DPNI)**:
   <https://bvsms.saude.gov.br/bvs/publicacoes/informe_tecnico_estrategia_vacinacao_dengue_2024.pdf>
-
-- **Página oficial da campanha (com atualizações de 2025):**
-  <https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/d/dengue>
-
-### Passo a passo
-
-1. Baixe o **Informe Técnico Operacional 2024** (PDF) e localize o Anexo com a lista dos 521 municípios prioritários.
-
-2. Para a expansão de 2025 (cobertura ampliada para ~1.921 municípios), consulte a página oficial da campanha no site do Ministério da Saúde.
-
-3. Crie manualmente o arquivo `data/raw/pni/vacinacao_municipal.csv` com a seguinte estrutura:
-
-   ```csv
-   cod_ibge_7,ano,vacinou_dengue
-   5208707,2024,1
-   3304557,2024,1
-   3550308,2024,1
-   ...
+- **Anúncio oficial da estratégia (16 estados + DF, 521 municípios)**:
+  <https://bvsms.saude.gov.br/ministerio-da-saude-anuncia-estrategia-de-vacinacao-contra-a-dengue/>
+### Passo a passo de extração
+ 
+1. Acesse o painel LocalizaSUS (link acima — usar **Ocorrência**, não
+   Residência).
+2. No menu lateral de filtros, configure:
+   - **Ano Vacina**: o ano desejado (2024, depois 2025, depois 2026)
+   - **Imunobiológicos**: `Vacina dengue (atenuada)`
+   - Demais filtros: deixar em branco
+3. Vá para a aba **Tabelas** → escolha a granularidade por município.
+4. Clique em **Baixar Dados**. O arquivo virá em `.xlsx` com as colunas:
    ```
+   UF Ocorrência | Cod Mun Ocorrência | Mês Vacina | jan | fev | ... | dez
+   ```
+   - "Cod Mun Ocorrência" é o **código IBGE de 6 dígitos** (sem dígito
+     verificador). O script converte para 7 dígitos automaticamente.
+   - Células com "-" representam **zero doses** no mês.
+   - Cada linha = 1 município que registrou ≥ 1 dose no ano.
+5. Salve cada arquivo em `data/raw/pni/` com os nomes:
+   - `extracao_2024.xlsx`
+   - `extracao_2025.xlsx`
+   - `extracao_2026.xlsx`
+6. Rode o script de processamento:
+   ```bash
+   python processar_vacinacao.py \
+       --input-dir data/raw/pni \
+       --output data/raw/pni/vacinacao_municipal.csv
+   ```
+ 
+### Saída esperada (`vacinacao_municipal.csv`)
+ 
+Estrutura final:
+ 
+```csv
+cod_ibge_7,ano,vacinou_dengue
+1100049,2024,1
+1100114,2024,1
+...
+5300108,2026,1
+```
+ 
+| Coluna | Descrição |
+|---|---|
+| `cod_ibge_7` | Código IBGE do município (7 dígitos, com DV) |
+| `ano` | 2024, 2025 ou 2026 |
+| `vacinou_dengue` | 1 se o município registrou ≥ 1 dose da Qdenga no ano |
+ 
+Linhas com `vacinou_dengue=0` **não são listadas** — `features.py` preenche
+por default com 0 todos os municípios não presentes, bem como todos os
+anos anteriores a 2024 (a vacina só foi incorporada ao SUS em dez/2023 e
+aplicada a partir de fev/2024).
+ 
+### Resumo dos dados extraídos (data de corte da extração)
+ 
+| Ano  | Municípios com `vacinou_dengue=1` |
+|------|-----------------------------------|
+| 2024 | 1.099 |
+| 2025 | 1.124 |
+| 2026 | 520 (ano em andamento) |
+| **Total de linhas** | **2.743** |
+| **Municípios únicos** | 1.588 |
+ 
+Validação: as 5 capitais com maior carga histórica de dengue (Goiânia,
+Rio de Janeiro, São Paulo, Brasília, Campo Grande) aparecem nos 3 anos.
+ 
+### Limitações declaradas
+ 
+- Os dados do LocalizaSUS são **preliminares** até o fechamento da
+  competência anual. Corte de dados realizados em 25-05-2026.
+- O painel reflete **registros enviados à RNDS** — municípios que
+  aplicaram doses mas atrasaram o envio podem aparecer subestimados.
+  Em abr/2024, ~48% das doses ainda não haviam sido registradas (fonte:
+  Agência Brasil, 25/04/2024).
+- **Efeito vacinal parcial em 2024**: o esquema completo (2 doses, intervalo
+  de 3 meses) só se completa meses depois do início. Considere isso na
+  análise causal.
+- **Inferência ecológica**: a variável captura a presença da campanha no
+  município, não a proteção individual.
 
-   - `cod_ibge_7`: código IBGE de 7 dígitos do município.
-   - `ano`: 2024, 2025 ou 2026.
-   - `vacinou_dengue`: **1** se o município fez parte da campanha naquele ano, **0** caso contrário.
 
-   Apenas as linhas com `vacinou_dengue=1` precisam ser listadas. O script preencherá automaticamente todos os outros municípios e anos com `0` (não vacinou ou ano pré-campanha).
-
-4. Como facilitador, fornecemos no repositório um arquivo-modelo já preenchido com os 521 municípios da campanha 2024:
-
-   `data/raw/pni/vacinacao_municipal.csv.exemplo`
-
-   Renomeie para `vacinacao_municipal.csv` se quiser usar diretamente, ou edite para adicionar a expansão de 2025/2026.
+5. **(Opcional, mas recomendado) Validação cruzada com dados de doses aplicadas**
+   - Baixe do TabNet/SI-PNI as doses aplicadas de "Vacina dengue (atenuada)" (código 104 na RNDS, ver Quadro 3 do informe técnico) por município em 2024.
+   - Municípios com doses > 0 devem coincidir, em sua maioria, com a lista oficial. Discrepâncias podem indicar: (i) municípios que receberam doses por demanda regional, (ii) erros de registro, (iii) ampliações não documentadas.
 
 ### Estrutura final no dataset integrado
 
