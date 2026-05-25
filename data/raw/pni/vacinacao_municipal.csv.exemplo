@@ -1,0 +1,68 @@
+cod_ibge_7,ano,vacinou_dengue
+# === ARQUIVO-MODELO ===
+# Lista de municipios prioritarios da campanha de vacinacao contra
+# dengue (Qdenga). Renomeie para vacinacao_municipal.csv e edite
+# conforme o Informe Tecnico Operacional do MS:
+# https://bvsms.saude.gov.br/bvs/publicacoes/informe_tecnico_estrategia_vacinacao_dengue_2024.pdf
+#
+# Apenas municipios COM campanha precisam ser listados.
+# Os demais sao automaticamente preenchidos com 0 pelo pipeline.
+# Para 2024: 521 municipios oficiais (37 regioes de saude).
+# Para 2025: ampliacao para ~1.921 municipios.
+#
+# === EXEMPLO PARCIAL (capitais e cidades grandes) ===
+# GOIAS (maior contingente: 134 municipios em 2024)
+5208707,2024,1
+5208707,2025,1
+5208707,2026,1
+# DISTRITO FEDERAL
+5300108,2024,1
+5300108,2025,1
+5300108,2026,1
+# BAHIA (115 municipios em 2024)
+2927408,2024,1
+2927408,2025,1
+2927408,2026,1
+# MATO GROSSO DO SUL (79 municipios em 2024)
+5002704,2024,1
+5002704,2025,1
+5002704,2026,1
+# PARANA (30 municipios em 2024)
+4106902,2024,1
+4106902,2025,1
+4119905,2024,1
+# MINAS GERAIS - Belo Horizonte e Uberlandia
+3106200,2024,1
+3106200,2025,1
+3170206,2024,1
+3170206,2025,1
+# SAO PAULO - capital e Campinas
+3550308,2024,1
+3550308,2025,1
+3509502,2024,1
+3509502,2025,1
+# RIO DE JANEIRO
+3304557,2024,1
+3304557,2025,1
+3300456,2024,1
+# CEARA - Fortaleza
+2304400,2024,1
+2304400,2025,1
+# PERNAMBUCO - Recife
+2611606,2024,1
+2611606,2025,1
+# AMAZONAS - Manaus
+1302603,2024,1
+1302603,2025,1
+# RORAIMA - Boa Vista
+1400100,2024,1
+1400100,2025,1
+# TOCANTINS - Palmas
+1721000,2024,1
+1721000,2025,1
+# ACRE - Rio Branco
+1200401,2024,1
+# RONDONIA - Porto Velho
+1100205,2024,1
+# AMAPA - Macapa
+1600303,2024,1
