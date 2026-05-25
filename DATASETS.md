@@ -442,7 +442,7 @@ Para conveniência da banca avaliadora, disponibilizei o conjunto
 processado **dados_integrados_2015_2026.parquet** (~280 MB) com todas
 as bases já integradas:
 
-- **Link:** [https://drive.google.com/drive/folders/TCC-DENGUE-MURILLO-DAEMON](https://drive.google.com/)
+- **Link:** [https://drive.google.com/drive/folders/1TXve7hH-c-7-2ARjRidVIyGcaQmzYeaN?usp=drive_link](https://drive.google.com/)
   *(substituir pelo link real ao publicar)*
 - **Conteúdo:**
   - `dados_integrados_2015_2026.parquet` — tabela analítica final

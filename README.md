@@ -259,4 +259,4 @@ aos órgãos produtores.
 
 ## 9. Contato
 
-Murillo Daemon Neto – `murillo.daemon@bridgetechnology.com.br`
+Murillo Daemon Neto – `mdaemonneto@gmail.com`
