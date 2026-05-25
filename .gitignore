@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
+build/
+dist/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Notebooks
+.ipynb_checkpoints/
+notebooks/*-checkpoint.ipynb
+
+# Dados (não versionar - pesados demais e públicos)
+data/raw/
+data/processed/*.parquet
+data/processed/*.csv
+data/geo/*.shp
+data/geo/*.dbf
+data/geo/*.shx
+data/geo/*.prj
+data/geo/*.zip
+
+# Mantém estrutura
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/geo/.gitkeep
+
+# Modelos treinados
+models/*.joblib
+models/*.pkl
+models/*.h5
+
+# Saídas temporárias
+outputs/*.tmp
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Específicos do projeto
+~/pysus/                # cache do PySUS

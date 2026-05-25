@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────
+# Dependências do TCC – Ciência de Dados aplicada à Dengue no Brasil
+# Murillo Daemon Neto, 2026
+# Python ≥ 3.11
+# ─────────────────────────────────────────────────────────────────
+
+# Núcleo
+numpy>=1.26,<3.0
+pandas>=2.1,<3.0
+pyarrow>=14.0
+scipy>=1.11
+
+# Visualização
+matplotlib>=3.8
+seaborn>=0.13
+
+# Análise estatística / séries temporais
+statsmodels>=0.14
+prophet>=1.1.5
+ruptures>=1.1.9
+
+# Machine learning
+scikit-learn>=1.3
+xgboost>=2.0
+joblib>=1.3
+
+# Análise geoespacial (opcional; pesado)
+geopandas>=0.14
+libpysal>=4.9
+esda>=2.5
+shapely>=2.0
+fiona>=1.9
+pyproj>=3.6
+
+# Coleta de dados
+pysus>=0.13          # SINAN/DATASUS
+requests>=2.31       # INMET / IBGE / OpenDataSUS
+
+# Mapas interativos (opcional)
+folium>=0.15
+
+# Notebooks (opcional)
+jupyterlab>=4.0
+ipykernel>=6.27
+openpyxl>=3.1
