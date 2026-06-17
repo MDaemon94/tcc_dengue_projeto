@@ -150,15 +150,31 @@ def integrar() -> pd.DataFrame:
     df = casos.rename(columns={"id_mn_resi": "cod_ibge_6"})
     df["cod_ibge_6"] = df["cod_ibge_6"].astype(str).str.zfill(6)
 
-    # Tenta resolver cod_ibge_7 a partir da tabela do IBGE
+    # Tenta resolver cod_ibge_7 + atributos geográficos a partir da tabela do IBGE
     munic_path = cfg.raw_dir / "ibge" / "municipios_ibge.csv"
     if munic_path.exists():
         mun = pd.read_csv(munic_path,
                           dtype={"cod_ibge_6": str, "cod_ibge_7": str})
-        df = df.merge(mun[["cod_ibge_6", "cod_ibge_7"]],
-                      on="cod_ibge_6", how="left")
+        cols_geo = [c for c in ["cod_ibge_6", "cod_ibge_7", "municipio",
+                                "uf_sigla", "regiao"] if c in mun.columns]
+        df = df.merge(mun[cols_geo], on="cod_ibge_6", how="left")
     else:
         df["cod_ibge_7"] = df["cod_ibge_6"]  # fallback
+
+    # Fallback robusto: deriva a regiao pelo prefixo do codigo IBGE (digitos 1-2)
+    # garantindo que a coluna 'regiao' SEMPRE exista, mesmo sem municipios_ibge.csv
+    PREFIXO2REGIAO = {
+        "1": "Norte", "2": "Nordeste", "3": "Sudeste",
+        "4": "Sul", "5": "Centro-Oeste",
+    }
+    if "regiao" not in df.columns:
+        df["regiao"] = pd.NA
+    falta = df["regiao"].isna()
+    if falta.any():
+        df.loc[falta, "regiao"] = (
+            df.loc[falta, "cod_ibge_7"].str[0].map(PREFIXO2REGIAO)
+        )
+    log.info(f"Coluna 'regiao' preenchida ({df['regiao'].notna().sum():,} linhas).")
 
     clima = carregar_clima_municipal()
     if not clima.empty:
