@@ -143,10 +143,7 @@ def figura_correlacao(tabela: pd.DataFrame) -> None:
                 ax.text(j, i, f"{v:.2f}", ha="center", va="center",
                         color="white" if abs(v) > 0.5 else "black",
                         fontsize=10)
-    ax.set_title(
-        "Figura 7 – Correlação entre variáveis externas e incidência de dengue\n"
-        f"por grande região ({cfg.ano_inicio}–{cfg.ano_fim})"
-    )
+    
     plt.colorbar(im, ax=ax, label="r de Pearson")
     fig.tight_layout()
     dest = cfg.figures_dir / "fig07_correlacao_clima_dengue.png"

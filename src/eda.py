@@ -97,10 +97,8 @@ def figura_distribuicao_semanal(df: pd.DataFrame) -> Path:
         )
     ax.set_xlabel("Semana Epidemiológica (SE)")
     ax.set_ylabel("Casos prováveis de dengue (Brasil)")
-    ax.set_title(
-        "Figura 4 – Distribuição de casos de dengue por SE no Brasil "
-        f"({cfg.ano_inicio}–{cfg.ano_fim})"
-    )
+    
+
     ax.set_xlim(1, 52)
     ax.grid(True, alpha=0.3)
     ax.legend(ncol=4, fontsize=8, title="Ano")
@@ -141,10 +139,7 @@ def figura_series_arboviroses(df: pd.DataFrame) -> Path:
         ax.plot(sub["data"], sub["casos"], color=cores[doenca], lw=1.0)
         ax.set_ylabel(f"{doenca.capitalize()}\n(casos/SE)")
         ax.grid(True, alpha=0.3)
-    axes[0].set_title(
-        "Figura 6 – Séries temporais nacionais de dengue, Zika e chikungunya "
-        f"({cfg.ano_inicio}–{cfg.ano_fim})"
-    )
+    
     axes[-1].set_xlabel("Data")
     fig.tight_layout()
 
@@ -168,10 +163,7 @@ def figura_pizza_distribuicao(df: pd.DataFrame) -> Path:
         startangle=90,
         textprops={"fontsize": 11},
     )
-    ax.set_title(
-        f"Distribuição percentual das arboviroses no Brasil "
-        f"({cfg.ano_inicio}–{cfg.ano_fim})"
-    )
+    
     fig.tight_layout()
 
     dest = cfg.figures_dir / "fig04b_distribuicao_arboviroses_pizza.png"

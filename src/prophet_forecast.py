@@ -123,8 +123,8 @@ def main() -> None:
     )
     ax.set_xlabel("Data")
     ax.set_ylabel("Casos prováveis de dengue (Brasil)")
-    ax.set_title("Figura 11 – Previsão Prophet vs. valores reais\n"
-                 f"(série nacional, últimas {n_teste} semanas)")
+    
+    
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()

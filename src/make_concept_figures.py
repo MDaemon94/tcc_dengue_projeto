@@ -62,7 +62,7 @@ def seta(ax, x1, y1, x2, y2, cor="black"):
 
 def figura_fluxo_metodologico() -> None:
     """Figura 1 — fluxo metodológico geral."""
-    fig, ax = plt.subplots(figsize=(11, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))
     ax.set_xlim(0, 12)
     ax.set_ylim(0, 7)
     ax.set_aspect("equal")
@@ -92,8 +92,8 @@ def figura_fluxo_metodologico() -> None:
     seta(ax, 9.5, 2.7, 10.5, 3.7)
     seta(ax, 8.75, 5.0, 10.5, 4.4)
 
-    ax.set_title("Figura 1 — Fluxo metodológico geral da pesquisa",
-                 fontsize=12, weight="bold")
+    
+
     fig.tight_layout()
     dest = cfg.figures_dir / "fig01_fluxo_metodologico.png"
     fig.savefig(dest, dpi=200, bbox_inches="tight")
@@ -131,8 +131,8 @@ def figura_arquitetura_pipeline() -> None:
           COR_VERDE, fontsize=8.5)
     seta(ax, 10.0, 2.5, 8.0, 1.3)
 
-    ax.set_title("Figura 2 — Arquitetura do pipeline de coleta e integração",
-                 fontsize=12, weight="bold")
+    
+
     fig.tight_layout()
     dest = cfg.figures_dir / "fig02_arquitetura_pipeline.png"
     fig.savefig(dest, dpi=200, bbox_inches="tight")
@@ -175,8 +175,8 @@ def figura_estrutura_bases() -> None:
     seta(ax, 6.0, 3.5, 6.0, 2.5)
     seta(ax, 10.0, 3.5, 7.5, 2.5)
 
-    ax.set_title("Figura 3 — Estrutura das bases SINAN, INMET e IBGE utilizadas",
-                 fontsize=12, weight="bold")
+    
+
     fig.tight_layout()
     dest = cfg.figures_dir / "fig03_estrutura_bases.png"
     fig.savefig(dest, dpi=200, bbox_inches="tight")

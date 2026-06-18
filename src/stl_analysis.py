@@ -76,11 +76,7 @@ def plotar_decomposicao(stl_result, doenca: str) -> None:
     """Plota a decomposição STL e salva PNG."""
     fig = stl_result.plot()
     fig.set_size_inches(11, 8)
-    fig.suptitle(
-        f"Figura 5 – Decomposição STL da série de {doenca.capitalize()} "
-        f"({cfg.ano_inicio}–{cfg.ano_fim})",
-        fontsize=12,
-    )
+    
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     dest = cfg.figures_dir / f"fig05_decomposicao_stl_{doenca}.png"
     fig.savefig(dest, dpi=200)

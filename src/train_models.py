@@ -104,8 +104,8 @@ def figura_importancia(modelo, features: list[str]) -> None:
     fig, ax = plt.subplots(figsize=(8, 7))
     ax.barh(imp["feature"], imp["importance"], color="#1976D2")
     ax.set_xlabel("Importância (Gini, normalizada)")
-    ax.set_title("Figura 10 – Importância das variáveis preditoras\n"
-                 "no modelo Random Forest")
+    
+
     fig.tight_layout()
     dest = cfg.figures_dir / "fig10_importancia_rf.png"
     fig.savefig(dest, dpi=200)
@@ -128,8 +128,8 @@ def figura_previsto_vs_real(
     ax.set_ylabel("Casos previstos")
     ax.set_xlim(0, lim)
     ax.set_ylim(0, lim)
-    ax.set_title(f"Figura 11 – Previsto vs. real ({modelo_nome})\n"
-                 f"Período de teste — horizonte 4 semanas")
+    
+
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
@@ -177,8 +177,8 @@ def figura_curvas_aprendizado(X: np.ndarray, y: np.ndarray, features: list[str])
         ax.plot(sub["frac"], sub["r2"], "-o", lw=2, label=nome)
     ax.set_xlabel("Fração do conjunto de treino utilizada")
     ax.set_ylabel("R² no teste")
-    ax.set_title("Figura 12 – Curvas de aprendizado dos modelos\n"
-                 "(número de amostras de treino vs. desempenho)")
+    
+    
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()

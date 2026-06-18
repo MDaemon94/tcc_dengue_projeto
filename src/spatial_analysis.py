@@ -147,8 +147,8 @@ def figura_mapa_choropleth(df_mun: pd.DataFrame) -> None:
     )
     bars = ax.barh(por_regiao["regiao"], por_regiao["tx_incidencia_100k"], color=cores)
     ax.set_xlabel("Taxa de incidência média de dengue (por 100k hab.)")
-    ax.set_title("Figura 8 – Incidência média de dengue por região "
-                 f"({cfg.ano_inicio}–{cfg.ano_fim})")
+    
+
     for b, v in zip(bars, por_regiao["tx_incidencia_100k"]):
         ax.text(b.get_width(), b.get_y() + b.get_height() / 2,
                 f"{v:,.0f}", va="center", ha="left", fontsize=10)
@@ -175,8 +175,8 @@ def figura_clusters(df_clusters: pd.DataFrame) -> None:
                        label=f"Cluster {cid}", alpha=0.85)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
-    ax.set_title("Figura 9 – Clusters geoespaciais (DBSCAN) de alta\n"
-                 f"incidência de dengue ({cfg.ano_inicio}–{cfg.ano_fim})")
+    
+    
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper right", fontsize=8, ncol=2)
     fig.tight_layout()
