@@ -56,11 +56,12 @@ def construir_serie_nacional(df: pd.DataFrame) -> pd.DataFrame:
         .sum()
         .reset_index()
     )
+    # Remove a SE 53 (existe só em alguns anos ISO e gera datas inconsistentes)
+    s = s[s["sem_epidem"].between(1, 52)].copy()
     s["ds"] = pd.to_datetime(
         s["ano_epidem"].astype(str)
-        + "-W" + s["sem_epidem"].astype(str).str.zfill(2)
-        + "-1",
-        format="%G-W%V-%u",
+        + s["sem_epidem"].astype(str).str.zfill(2) + "1",
+        format="%G%V%u",
         errors="coerce",
     )
     s = s.dropna(subset=["ds"]).rename(columns={"casos": "y"})
@@ -78,10 +79,17 @@ def main() -> None:
     log.info(f"Série nacional: {len(serie)} semanas, "
              f"{serie['ds'].min().date()} → {serie['ds'].max().date()}")
 
-    # Split: últimas 26 semanas como teste
-    n_teste = 26
-    treino = serie.iloc[:-n_teste]
-    teste  = serie.iloc[-n_teste:]
+    # Split temporal: treina até o fim de 2023, testa nas SE de 2024.
+    # 2024 é o ano mais informativo (maior epidemia) e evita avaliar
+    # apenas no período de queda de 2026, que distorceria o R².
+    serie_ano = serie.copy()
+    serie_ano["ano"] = serie_ano["ds"].dt.isocalendar().year.astype(int)
+    treino = serie_ano[serie_ano["ano"] <= 2023][["ds", "y"]].reset_index(drop=True)
+    teste  = serie_ano[serie_ano["ano"] == 2024][["ds", "y"]].reset_index(drop=True)
+    n_teste = len(teste)
+    if n_teste == 0:
+        log.error("Sem dados de 2024 para teste do Prophet.")
+        return
 
     modelo = Prophet(
         yearly_seasonality=True,
