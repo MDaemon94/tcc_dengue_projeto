@@ -37,6 +37,7 @@ from sklearn.cluster import DBSCAN
 
 from config import cfg
 from eda import carregar_dados
+from geo_utils import carregar_centroides
 
 
 logging.basicConfig(
@@ -103,21 +104,18 @@ def matriz_vizinhos_knn(coords: np.ndarray, k: int = 5) -> np.ndarray:
 
 def aplicar_dbscan(df_mun: pd.DataFrame, eps_km: float = 150, min_samples: int = 5) -> pd.DataFrame:
     """
-    DBSCAN sobre os centroides dos municípios com alta incidência
-    (acima do percentil 75). Pseudocoordenadas se shapefile ausente.
+    DBSCAN sobre os centroides REAIS dos municípios com alta incidência
+    (acima do percentil 75), obtidos do shapefile do IBGE.
     """
     p75 = df_mun["tx_incidencia_100k"].quantile(0.75)
     hi  = df_mun[df_mun["tx_incidencia_100k"] >= p75].copy()
     log.info(f"  Município de alta incidência (≥ p75): {len(hi)}")
 
-    rng = np.random.default_rng(cfg.random_state)
-    # Coordenadas pseudo-aleatórias agrupadas por região
-    base_lat = {"Norte": -3.5, "Nordeste": -9.0, "Sudeste": -21.0,
-                "Sul": -29.0, "Centro-Oeste": -15.0}
-    base_lon = {"Norte": -60.0, "Nordeste": -38.0, "Sudeste": -45.0,
-                "Sul": -52.0, "Centro-Oeste": -53.0}
-    hi["lat"] = hi["regiao"].map(base_lat) + rng.normal(0, 3.0, len(hi))
-    hi["lon"] = hi["regiao"].map(base_lon) + rng.normal(0, 4.0, len(hi))
+    # Coordenadas REAIS dos centroides (merge se ainda não houver lat/lon)
+    if "lat" not in hi.columns or "lon" not in hi.columns:
+        cent = carregar_centroides()
+        hi = hi.merge(cent, on="cod_ibge_7", how="left")
+    hi = hi.dropna(subset=["lat", "lon"]).copy()
 
     # Aproximação: graus → km (1°lat≈111km, 1°lon ≈ 111×cos(lat))
     coords_km = np.column_stack([
@@ -196,18 +194,26 @@ def main() -> None:
     top10.to_csv(cfg.outputs_dir / "tabela5_top10_municipios.csv", index=False)
     log.info("Top 10 municípios salvos.")
 
-    # Moran I com matriz k-NN sobre coordenadas pseudo-regionais
-    rng = np.random.default_rng(cfg.random_state)
-    coords = np.column_stack([
-        rng.uniform(-33, 5, len(df_mun)),
-        rng.uniform(-73, -34, len(df_mun)),
-    ])
-    W = matriz_vizinhos_knn(coords, k=5)
-    I = moran_global(df_mun["tx_incidencia_100k"].fillna(0).values, W)
-    log.info(f"Moran I (k-NN, k=5)  = {I:.4f}")
+    # Centroides REAIS dos municípios (shapefile IBGE) para Moran e DBSCAN
+    cent = carregar_centroides()
+    if cent.empty:
+        log.error("Centroides reais indisponíveis (instale geopandas e confirme "
+                  "o shapefile em data/geo/). Moran I não será confiável.")
+        I = float("nan")
+        df_mun_geo = df_mun.copy()
+        df_mun_geo["lat"] = np.nan
+        df_mun_geo["lon"] = np.nan
+    else:
+        df_mun_geo = df_mun.merge(cent, on="cod_ibge_7", how="left")
+        validos = df_mun_geo.dropna(subset=["lat", "lon"]).reset_index(drop=True)
+        coords = validos[["lat", "lon"]].values
+        W = matriz_vizinhos_knn(coords, k=5)
+        I = moran_global(validos["tx_incidencia_100k"].fillna(0).values, W)
+        log.info(f"Moran I (k-NN, k=5, centroides reais) = {I:.4f} "
+                 f"sobre {len(validos):,} municípios.")
 
-    # DBSCAN
-    df_clusters = aplicar_dbscan(df_mun)
+    # DBSCAN (usa lat/lon já anexados aos municípios)
+    df_clusters = aplicar_dbscan(df_mun_geo)
     figura_clusters(df_clusters)
     figura_mapa_choropleth(df_mun)
 

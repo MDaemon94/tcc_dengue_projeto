@@ -192,16 +192,95 @@ def carregar_ibge() -> pd.DataFrame:
 
 
 def carregar_saneamento() -> pd.DataFrame:
-    """Carrega indicadores de saneamento (PNSB 2017)."""
-    file = "saneamento_municipal_normalizado.csv"
-    p = cfg.raw_dir / "ibge" / file
-    if not p.exists():
-        file = "saneamento_municipal.csv"
-        p = cfg.raw_dir / "ibge" / file
-    if not p.exists():
-        log.warning("Saneamento (PNSB) ausente. Pulando merge.")
+    """Carrega cobertura de saneamento por município.
+
+    Ordem de preferencia:
+      1. saneamento_municipal_normalizado.csv (ja tem cod_ibge_7);
+      2. saneamento_municipal.csv;
+      3. saneamento_municipal.xlsx (Atlas Brasil 2010): a planilha traz
+         'Territorialidades' no formato 'Municipio (UF)' e a coluna de
+         '% inadequado'. Resolve cod_ibge_7 por nome+uf (igual ao IDHM) e
+         converte o percentual inadequado em um score de cobertura
+         (cobertura_sanea = 1 - inadequado/100, escala 0-1).
+    """
+    base = cfg.raw_dir / "ibge"
+    for nome in ("saneamento_municipal_normalizado.csv", "saneamento_municipal.csv"):
+        p = base / nome
+        if p.exists():
+            return pd.read_csv(p, dtype={"cod_ibge_7": str})
+
+    xlsx = base / "saneamento_municipal.xlsx"
+    if not xlsx.exists():
+        log.warning("Saneamento ausente (nem .csv normalizado nem .xlsx). Pulando merge.")
         return pd.DataFrame()
-    return pd.read_csv(p, dtype={"cod_ibge_7": str}) if file.endswith(".csv") else pd.read_excel(p, dtype={"cod_ibge_7": str})
+
+    raw = pd.read_excel(xlsx)
+    # 1a coluna = Territorialidades ; ultima coluna = % inadequado 2010
+    col_terr = raw.columns[0]
+    col_inad = raw.columns[-1]
+    extr = raw[col_terr].astype(str).str.extract(
+        r"^(?P<municipio>.*)\s+\((?P<uf_sigla>[A-Z]{2})\)\s*$"
+    )
+    raw = raw.join(extr)
+    raw = raw[raw["uf_sigla"].isin(UF_VALIDAS)].copy()
+    raw["chave_mun"] = raw["municipio"].map(_normalizar_nome) + "|" + raw["uf_sigla"]
+    raw["pct_inadequado"] = pd.to_numeric(raw[col_inad], errors="coerce")
+    # cobertura = 1 - inadequado/100  (maior = melhor saneamento)
+    raw["cobertura_sanea"] = 1.0 - (raw["pct_inadequado"] / 100.0)
+
+    ref_path = base / "municipios_ibge.csv"
+    if not ref_path.exists():
+        log.warning(
+            "Saneamento em .xlsx exige municipios_ibge.csv para resolver "
+            "cod_ibge_7 (o Atlas Brasil nao traz codigo IBGE). Pulando merge."
+        )
+        return pd.DataFrame()
+    ref = pd.read_csv(ref_path, dtype={"cod_ibge_7": str})
+    if not {"municipio", "uf_sigla", "cod_ibge_7"}.issubset(ref.columns):
+        log.warning(
+            "municipios_ibge.csv sem colunas municipio/uf_sigla/cod_ibge_7. "
+            "Pulando merge saneamento."
+        )
+        return pd.DataFrame()
+    ref["chave_mun"] = ref["municipio"].map(_normalizar_nome) + "|" + ref["uf_sigla"]
+    ref = ref[["chave_mun", "cod_ibge_7"]].drop_duplicates("chave_mun")
+
+    out = raw.merge(ref, on="chave_mun", how="left").dropna(subset=["cod_ibge_7"])
+    log.info(f"Saneamento (Atlas 2010): {len(out):,} municipios com cobertura.")
+    return out[["cod_ibge_7", "cobertura_sanea"]]
+
+
+def carregar_area_municipal() -> pd.DataFrame:
+    """Area territorial (km2) por municipio, a partir do shapefile do IBGE.
+
+    Usada para calcular a densidade demografica (hab/km2). Retorna
+    DataFrame vazio se geopandas/shapefile indisponiveis (o merge e pulado).
+    """
+    shp = cfg.geo_dir / "BR_Municipios_2022.shp"
+    if not shp.exists():
+        log.warning("Shapefile ausente; densidade demografica nao sera calculada.")
+        return pd.DataFrame()
+    try:
+        import geopandas as gpd
+    except ImportError:
+        log.warning("geopandas nao instalado; densidade demografica nao sera calculada.")
+        return pd.DataFrame()
+
+    gdf = gpd.read_file(shp)
+    col_cod = next((c for c in ["CD_MUN", "CD_GEOCMU", "GEOCODIGO"]
+                    if c in gdf.columns), None)
+    if col_cod is None:
+        log.warning("Coluna de codigo nao achada no shapefile; sem area.")
+        return pd.DataFrame()
+
+    # Area em km2 via projecao metrica oficial (SIRGAS 2000 / Brazil Polyconic)
+    gdf = gdf.to_crs(epsg=5880)
+    area = pd.DataFrame({
+        "cod_ibge_7": gdf[col_cod].astype(str).str.zfill(7),
+        "area_km2": gdf.geometry.area.values / 1e6,   # m2 -> km2
+    })
+    log.info(f"Area municipal carregada: {len(area):,} municipios.")
+    return area
 
 
 def carregar_populacao() -> pd.DataFrame:
@@ -299,6 +378,13 @@ def integrar() -> pd.DataFrame:
         )
         df["tx_incidencia"] = (df["casos"] / df["populacao"]) * 100_000
         log.info("Taxa de incidencia calculada.")
+
+        area = carregar_area_municipal()
+        if not area.empty:
+            df = df.merge(area, on="cod_ibge_7", how="left")
+            df["dens_demo"] = df["populacao"] / df["area_km2"]
+            log.info(f"Densidade demografica calculada "
+                     f"({df['dens_demo'].notna().mean()*100:.1f}% preenchida).")
 
     vac = carregar_vacinacao()
     if not vac.empty:
