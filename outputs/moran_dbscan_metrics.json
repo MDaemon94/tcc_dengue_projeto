@@ -1,6 +1,6 @@
 {
   "n_municipios": 5563,
-  "moran_I_knn5": -0.0078,
-  "n_clusters_dbscan": 2,
+  "moran_I_knn5": 0.7329,
+  "n_clusters_dbscan": 3,
   "p75_incidencia": 13805.80054667411
 }

@@ -46,17 +46,23 @@ def construir_serie_nacional(df: pd.DataFrame, doenca: str) -> pd.Series:
         .sum()
         .reset_index()
     )
+    # Remove a SE 53 (existe só em alguns anos ISO e gera datas NaT, que ao
+    # serem preenchidas com zero inflavam artificialmente a variância do
+    # resíduo e reduziam a força sazonal estimada).
+    sub = sub[sub["sem_epidem"].between(1, 52)].copy()
     sub["data"] = pd.to_datetime(
         sub["ano_epidem"].astype(str)
-        + "-W"
         + sub["sem_epidem"].astype(str).str.zfill(2)
-        + "-1",
-        format="%G-W%V-%u",
+        + "1",
+        format="%G%V%u",
         errors="coerce",
     )
     sub = sub.dropna(subset=["data"]).sort_values("data")
     s = pd.Series(sub["casos"].values, index=sub["data"], name=doenca)
-    s = s.asfreq("W-MON").fillna(0)
+    # Reindexa em frequência semanal e interpola lacunas curtas (em vez de
+    # preencher com zero), preservando a continuidade da componente sazonal.
+    s = s.asfreq("W-MON")
+    s = s.interpolate(method="time", limit=3).fillna(0)
     return s
 
 
