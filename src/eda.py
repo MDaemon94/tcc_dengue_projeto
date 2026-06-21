@@ -46,7 +46,11 @@ def carregar_dados() -> pd.DataFrame:
         log.info(f"Usando dados reais: {real}")
         return pd.read_parquet(real)
     if synth.exists():
-        log.info(f"Usando dados sintéticos: {synth}")
+        log.warning("!" * 60)
+        log.warning("ATENCAO: carregando DADOS SINTETICOS (demonstracao).")
+        log.warning("Resultados gerados NAO devem ir para o TCC oficial.")
+        log.warning(f"Arquivo: {synth}")
+        log.warning("!" * 60)
         return pd.read_parquet(synth)
     raise FileNotFoundError(
         "Nenhum dataset integrado encontrado. Rode antes:\n"

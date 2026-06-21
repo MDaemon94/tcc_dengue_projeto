@@ -14,6 +14,8 @@ Data  : 2026
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 
 import pandas as pd
 
@@ -86,28 +88,120 @@ def carregar_clima_municipal() -> pd.DataFrame:
     return pd.read_parquet(p)
 
 
-def carregar_ibge() -> pd.DataFrame:
-    """Carrega IDHM normalizado (Atlas Brasil 2010)."""
-    p = cfg.raw_dir / "ibge" / "idhm_municipal_normalizado.csv"
-    if not p.exists():
-        # Fallback: tenta o nome original (caso o usuario tenha
-        # baixado direto e ainda nao rodou collect_ibge_pni.py)
-        p = cfg.raw_dir / "ibge" / "idhm_municipal.csv"
-    if not p.exists():
-        log.warning("IDHM ausente. Pulando merge IDHM.")
+UF_VALIDAS = {
+    "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS",
+    "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC",
+    "SE", "SP", "TO",
+}
+
+
+def _normalizar_nome(s) -> str:
+    """Remove acentos, pontuacao e espacos; tudo minusculo.
+
+    Ex.: "Olho-d'Agua do Borges" -> "olhodaguadoborges". Serve para
+    casar nomes de municipio entre o Atlas Brasil e o IBGE, que diferem
+    em hifen/apostrofo/acentuacao.
+    """
+    s = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _carregar_idhm_xlsx(caminho) -> pd.DataFrame:
+    """Le o IDHM bruto do Atlas Brasil.
+
+    A planilha NAO possui codigo IBGE: traz apenas a coluna
+    'Territorialidades' no formato 'Municipio (UF)' mais os quatro
+    indicadores de 2010. Devolve um frame com chave normalizada
+    'nome|uf' (coluna 'chave_mun') para posterior resolucao do
+    cod_ibge_7. As linhas de cabecalho/rodape (Brasil, fontes, vazia)
+    sao descartadas por nao baterem no padrao 'Nome (UF)'.
+    """
+    raw = pd.read_excel(caminho, usecols="A:E").rename(
+        columns={
+            "Territorialidades": "territorialidade",
+            "IDHM 2010": "idhm",
+            "IDHM Renda 2010": "idhm_renda",
+            "IDHM Longevidade 2010": "idhm_longevidade",
+            "IDHM Educação 2010": "idhm_educacao",
+        }
+    )
+    extr = raw["territorialidade"].astype(str).str.extract(
+        r"^(?P<municipio>.*)\s+\((?P<uf_sigla>[A-Z]{2})\)\s*$"
+    )
+    raw = raw.join(extr)
+    raw = raw[raw["uf_sigla"].isin(UF_VALIDAS)].copy()
+    raw["chave_mun"] = raw["municipio"].map(_normalizar_nome) + "|" + raw["uf_sigla"]
+    cols = ["chave_mun", "idhm", "idhm_renda", "idhm_longevidade", "idhm_educacao"]
+    return raw[cols].reset_index(drop=True)
+
+
+def _resolver_cod_ibge_por_nome(idhm: pd.DataFrame) -> pd.DataFrame:
+    """Anexa cod_ibge_7 ao IDHM cruzando nome+uf com municipios_ibge.csv.
+
+    O Atlas Brasil nao traz codigo IBGE, entao a referencia
+    municipios_ibge.csv (mesma usada na integracao) e obrigatoria para o
+    caminho .xlsx. Sem ela, retorna frame vazio e o merge IDHM e pulado.
+    """
+    ref_path = cfg.raw_dir / "ibge" / "municipios_ibge.csv"
+    if not ref_path.exists():
+        log.warning(
+            "IDHM em .xlsx exige municipios_ibge.csv para resolver cod_ibge_7 "
+            "(o Atlas Brasil nao traz codigo IBGE). Pulando merge IDHM."
+        )
         return pd.DataFrame()
-    return pd.read_csv(p, dtype={"cod_ibge_7": str})
+
+    ref = pd.read_csv(ref_path, dtype={"cod_ibge_7": str})
+    if not {"municipio", "uf_sigla", "cod_ibge_7"}.issubset(ref.columns):
+        log.warning(
+            "municipios_ibge.csv sem colunas municipio/uf_sigla/cod_ibge_7. "
+            "Pulando merge IDHM."
+        )
+        return pd.DataFrame()
+
+    ref["chave_mun"] = ref["municipio"].map(_normalizar_nome) + "|" + ref["uf_sigla"]
+    ref = ref[["chave_mun", "cod_ibge_7"]].drop_duplicates("chave_mun")
+
+    out = idhm.merge(ref, on="chave_mun", how="left")
+    sem = out["cod_ibge_7"].isna()
+    if sem.any():
+        log.warning(
+            f"IDHM: {int(sem.sum())} municipios sem cod_ibge_7 "
+            "(divergencia de grafia ou criados apos 2010 - sem IDHM)."
+        )
+    return out.dropna(subset=["cod_ibge_7"]).drop(columns=["chave_mun"])
+
+
+def carregar_ibge() -> pd.DataFrame:
+    """Carrega IDHM municipal (Atlas Brasil 2010), sempre com a chave cod_ibge_7.
+
+    Ordem de preferencia:
+      1. idhm_municipal_normalizado.csv -> ja contem cod_ibge_7;
+      2. idhm_municipal.xlsx (bruto do Atlas) -> resolve cod_ibge_7 por
+         nome+uf usando municipios_ibge.csv.
+    """
+    csv_path = cfg.raw_dir / "ibge" / "idhm_municipal_normalizado.csv"
+    if csv_path.exists():
+        return pd.read_csv(csv_path, dtype={"cod_ibge_7": str})
+
+    xlsx_path = cfg.raw_dir / "ibge" / "idhm_municipal.xlsx"
+    if xlsx_path.exists():
+        return _resolver_cod_ibge_por_nome(_carregar_idhm_xlsx(xlsx_path))
+
+    log.warning("IDHM ausente (nem .csv normalizado nem .xlsx). Pulando merge IDHM.")
+    return pd.DataFrame()
 
 
 def carregar_saneamento() -> pd.DataFrame:
     """Carrega indicadores de saneamento (PNSB 2017)."""
-    p = cfg.raw_dir / "ibge" / "saneamento_municipal_normalizado.csv"
+    file = "saneamento_municipal_normalizado.csv"
+    p = cfg.raw_dir / "ibge" / file
     if not p.exists():
-        p = cfg.raw_dir / "ibge" / "saneamento_municipal.csv"
+        file = "saneamento_municipal.csv"
+        p = cfg.raw_dir / "ibge" / file
     if not p.exists():
         log.warning("Saneamento (PNSB) ausente. Pulando merge.")
         return pd.DataFrame()
-    return pd.read_csv(p, dtype={"cod_ibge_7": str})
+    return pd.read_csv(p, dtype={"cod_ibge_7": str}) if file.endswith(".csv") else pd.read_excel(p, dtype={"cod_ibge_7": str})
 
 
 def carregar_populacao() -> pd.DataFrame:
